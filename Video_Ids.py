@@ -11,7 +11,7 @@ next_page = None
 while True:
     res = api.search().list(
         part="id",
-        q="Rainbow 6 Siege Rocket League",
+        q="Marvel Rivals Overwatch",
         type="video",
         maxResults=50,  # 50 is the set max
         pageToken=next_page
@@ -28,5 +28,5 @@ print(videos)
 print(len(videos))
 
 df = pd.DataFrame(videos)
-csv_path = "/Users/andrewherman/CMP 455/Project 1/API_Code/Video_Ids.csv"
+csv_path = "/Users/jto5108/Project1-CMPSC445/Video_Ids.csv"
 df.to_csv(csv_path, mode='a', header=False, index=False)
