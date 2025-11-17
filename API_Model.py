@@ -11,7 +11,7 @@ import seaborn as sns
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 
-csv_path = "/Users/andrewherman/CMP 455/Project 1/API_Code/youtube_videos.csv"
+csv_path = "/Users/jto5108/Project1/CMPSC455/Video_Metadata.csv"
 df = pd.read_csv(csv_path)
 cols = [col.lower() for col in df.columns]
 
