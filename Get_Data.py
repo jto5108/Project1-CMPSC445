@@ -18,7 +18,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 
 
 input_file = "ThumbnailScrape.csv"
-output_file = "Youtube_Video_Data.csv"
+output_file = "YT_Video_Data.csv"
 start_row = 897
 with open(input_file, "r", encoding="utf-8") as infile, \
      open(output_file, "a", newline="", encoding="utf-8") as outfile: #KEEP "a" to add to file. "W" will rewrite over
