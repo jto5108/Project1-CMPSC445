@@ -6,7 +6,7 @@ key = os.getenv("API_KEY")
 api = build("youtube", "v3", developerKey=key)
 
 video_ids = []
-csv_path = "/Users/andrewherman/CMP 455/Project 1/API_Code/Video_Ids.csv"
+csv_path = "/Users/jto5108/Project1-CMPSC445/Video_Metadata.csv"
 with open(csv_path, "r", newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f)
     for row in reader:
