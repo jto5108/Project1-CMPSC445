@@ -28,5 +28,5 @@ print(videos)
 print(len(videos))
 
 df = pd.DataFrame(videos)
-csv_path = "/Users/jto5108/Project1-CMPSC445/Video_Ids.csv"
+csv_path = "Video_Ids.csv"
 df.to_csv(csv_path, mode='a', header=False, index=False)
