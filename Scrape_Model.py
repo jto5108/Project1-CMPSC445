@@ -14,7 +14,7 @@ import shap
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 
-csv_path = "/Users/andrewherman/CMP 455/Project 1/Scraped/Youtube_Video_Data.csv"
+csv_path = "YT_Video_Data.csv"
 df = pd.read_csv(csv_path)
 cols = [col.lower() for col in df.columns]
 
