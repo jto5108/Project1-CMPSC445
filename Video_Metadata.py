@@ -6,7 +6,7 @@ key = os.getenv("API_KEY")
 api = build("youtube", "v3", developerKey=key)
 
 video_ids = []
-csv_path = "/Users/jto5108/Project1-CMPSC445/Video_Metadata.csv"
+csv_path = "Video_Metadata.csv"
 with open(csv_path, "r", newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -59,7 +59,7 @@ for i in range(0, len(video_ids), 50):  # batch 50 per request
             "subscribers": subs
         })
 
-csv_path = "/Users/andrewherman/CMP 455/Project 1/API_Code/youtube_videos.csv"
+csv_path = "Video_Metadata.csv"
 with open(csv_path, "a", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=data[0].keys())
     if f.tell() == 0:
