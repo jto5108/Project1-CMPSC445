@@ -1,7 +1,7 @@
 import pandas as pd
 
 #Get csv data
-df = pd.read_csv("Youtube_Video_Data.csv")
+df = pd.read_csv("YT_Video_Data.csv")
 
 """
 Code to add category column
@@ -37,4 +37,4 @@ def assign_category(video_title, tag):
 df["Category"] = df.apply(lambda row: assign_category(row["Title"], row.get("FirstTag", "")), axis=1)
 
 #Write back to csv
-df.to_csv("Youtube_Video_Data.csv", index=False)
+df.to_csv("YT_Video_Data.csv", index=False)
