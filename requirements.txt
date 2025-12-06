@@ -8,3 +8,8 @@ selenium==4.14.0
 webdriver-manager==4.0.2
 
 python-dotenv==1.0.0
+isodate==0.6.1
+
+python-dateutil==2.9.0.post0
+pytz==2025.2
+
