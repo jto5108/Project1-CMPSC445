@@ -4,14 +4,16 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import os
 
 # ----------------------------
-# SETUP SELENIUM (headless + fast)
+# SETUP SELENIUM (headless + container-friendly)
 # ----------------------------
 options = Options()
-# options.add_argument("--headless=new")
+options.add_argument("--headless=new")  # headless mode
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
@@ -39,72 +41,94 @@ queries = [
     "Overwatch",
 ]
 
-
 max_videos = 4000
 csv_file = "ThumbnailScrape.csv"
+
+# ----------------------------
+# LOAD EXISTING URLS (avoid duplicates across runs)
+# ----------------------------
+video_urls = set()
+if os.path.exists(csv_file):
+    with open(csv_file, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader, None)  # skip header
+        for row in reader:
+            if len(row) > 1:
+                video_urls.add(row[1])
 
 # ----------------------------
 # PREPARE CSV
 # ----------------------------
 file_exists = os.path.exists(csv_file)
-with open(csv_file, "a", newline="", encoding="utf-8") as f:
-    writer = csv.writer(f)
-    if not file_exists:
-        writer.writerow(["Title", "URL", "Channel", "Views", "Upload Date"])
+csv_f = open(csv_file, "a", newline="", encoding="utf-8")
+writer = csv.writer(csv_f)
+if not file_exists:
+    writer.writerow(["Title", "URL", "Channel", "Views", "Upload Date"])
 
 # ----------------------------
 # SCRAPE LOOP
 # ----------------------------
-video_urls = set()  # track unique URLs
-
 for topic in queries:
     print(f"\n🔍 Searching for: {topic}")
     driver.get(f"https://www.youtube.com/results?search_query={topic}&sp=EgIQAQ%253D%253D")
-    time.sleep(3)
+    
+    # wait for videos to load
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//a[@id="video-title"]'))
+        )
+    except:
+        print("Timeout waiting for videos to load.")
+        continue
 
     prev_count = -1
     while len(video_urls) < max_videos and len(video_urls) != prev_count:
         prev_count = len(video_urls)
-
-        # scroll down
         driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-        time.sleep(2)
+        time.sleep(2)  # small wait for new content
 
         videos = driver.find_elements(By.XPATH, '//a[@id="video-title"]')
 
-        with open(csv_file, "a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
+        for v in videos:
+            title = v.get_attribute("title")
+            url = v.get_attribute("href")
 
-            for v in videos:
-                title = v.get_attribute("title")
-                url = v.get_attribute("href")
+            if not url or "/shorts/" in url or url in video_urls:
+                continue  # skip shorts & duplicates
 
-                if not url or "/shorts/" in url or url in video_urls:
-                    continue  # skip shorts & duplicates
+            video_urls.add(url)
 
-                video_urls.add(url)
-
+            # container traversal
+            try:
                 container = v.find_element(By.XPATH, "./../../..")
-                try:
-                    channel = container.find_element(By.XPATH, './/*[@id="channel-name"]').text
-                except:
-                    channel = "N/A"
-                try:
-                    views = container.find_element(By.XPATH, './/span[contains(text(), "views")]').text
-                except:
-                    views = "N/A"
-                try:
-                    upload_date = container.find_element(By.XPATH, './/span[contains(text(), "ago")]').text
-                except:
-                    upload_date = "N/A"
+            except:
+                container = None
 
-                writer.writerow([title, url, channel, views, upload_date])
-                print(f"Saved: {title} | {url}")
+            # extract details
+            try:
+                channel = container.find_element(By.XPATH, './/*[@id="channel-name"]').text if container else "N/A"
+            except:
+                channel = "N/A"
+            try:
+                views = container.find_element(By.XPATH, './/span[contains(text(), "views")]').text if container else "N/A"
+            except:
+                views = "N/A"
+            try:
+                upload_date = container.find_element(By.XPATH, './/span[contains(text(), "ago")]').text if container else "N/A"
+            except:
+                upload_date = "N/A"
+
+            writer.writerow([title, url, channel, views, upload_date])
+            print(f"Saved: {title} | {url}")
 
         print(f"Collected so far: {len(video_urls)}")
 
         if len(video_urls) >= max_videos:
             break
 
+# ----------------------------
+# CLEANUP
+# ----------------------------
+csv_f.close()
 driver.quit()
 print("\nDone. Check ThumbnailScrape.csv for results.")
