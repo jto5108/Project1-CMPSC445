@@ -59,7 +59,7 @@ for i in range(0, len(video_ids), 50):  # batch 50 per request
             "subscribers": subs
         })
 
-csv_path = "YT_Video.csv"
+csv_path = "YT_Video_Data.csv"
 with open(csv_path, "a", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=data[0].keys())
     if f.tell() == 0:
