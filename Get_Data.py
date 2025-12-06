@@ -1,28 +1,32 @@
 import csv
-import time
 import re
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ----------------------------
 # SETUP SELENIUM
 # ----------------------------
 options = Options()
-options.add_argument("--headless=new")   # headless mode
+options.add_argument("--headless=new")
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+wait = WebDriverWait(driver, 5)  # wait max 5 seconds for elements
 
 # ----------------------------
 # INPUT / OUTPUT
 # ----------------------------
 input_file = "ThumbnailScrape.csv"
 output_file = "Youtube_Data.csv"
-start_row = 1  # change if you want to skip rows
+start_row = 1
 
 # ----------------------------
 # CATEGORY KEYWORDS
@@ -53,18 +57,22 @@ def assign_category(title, tag):
     return "General Gaming"
 
 # ----------------------------
+# CHECK IF CSV EXISTS
+# ----------------------------
+file_exists = os.path.exists(output_file)
+
+# ----------------------------
 # READ INPUT AND WRITE OUTPUT
 # ----------------------------
 with open(input_file, "r", encoding="utf-8") as infile, \
-     open(output_file, "w", newline="", encoding="utf-8") as outfile:  # always overwrite
+     open(output_file, "a", newline="", encoding="utf-8") as outfile:
 
     reader = csv.DictReader(infile)
     fieldnames = reader.fieldnames + ["Comments", "FirstTag", "Category"]
     writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-    writer.writeheader()  # write header once
 
-    total_rows = sum(1 for _ in open(input_file, encoding="utf-8"))
-    infile.seek(0)  # reset reader after counting
+    if not file_exists:
+        writer.writeheader()
 
     for i, row in enumerate(reader, start=1):
         if i < start_row:
@@ -72,41 +80,45 @@ with open(input_file, "r", encoding="utf-8") as infile, \
 
         url = row.get("URL", "")
         if not url:
-            continue  # skip rows without URL
+            continue
 
+        # ----------------------------
+        # SCRAPE YOUTUBE
+        # ----------------------------
         try:
             driver.get(url)
-            time.sleep(2)  # let page load
-            driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(1)
 
             # comment count
             try:
-                comment_count = driver.find_element(By.XPATH, '//h2[@id="count"]/yt-formatted-string').text
-            except:
+                comment_count = wait.until(
+                    EC.presence_of_element_located((By.XPATH, '//h2[@id="count"]/yt-formatted-string'))
+                ).text
+            except TimeoutException:
                 comment_count = "N/A"
 
             # first tag
             try:
-                first_tag = driver.find_element(By.XPATH, '//meta[@property="og:video:tag"]').get_attribute("content")
-            except:
+                first_tag = wait.until(
+                    EC.presence_of_element_located((By.XPATH, '//meta[@property="og:video:tag"]'))
+                ).get_attribute("content")
+            except TimeoutException:
                 first_tag = "N/A"
 
         except:
             comment_count = "N/A"
             first_tag = "N/A"
 
-        # assign category
+        # ----------------------------
+        # ASSIGN CATEGORY
+        # ----------------------------
         category = assign_category(row.get("Title", ""), first_tag if first_tag != "N/A" else "")
 
-        # write row to CSV
+        # ----------------------------
+        # WRITE ROW TO CSV
+        # ----------------------------
         row["Comments"] = comment_count
         row["FirstTag"] = first_tag
         row["Category"] = category
         writer.writerow(row)
 
-        # print progress
-        print(f"[{i}/{total_rows}] URL: {url} | Comments: {comment_count} | FirstTag: {first_tag} | Category: {category}")
-
 driver.quit()
-print("Scraping complete. Data saved to", output_file)
