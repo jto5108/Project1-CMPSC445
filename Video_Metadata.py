@@ -2,11 +2,11 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os, csv, datetime, isodate, time
 
-key = os.getenv("API_KEY")
-api = build("youtube", "v3", developerKey=key)
+
+api = build("youtube", "v3", developerKey="AIzaSyDejAMtAIGAo4GLDNBar764UQ0Ty6Euago")  # <-- hardcoded your key
 
 video_ids = []
-csv_path = "Video_Metadata.csv"
+csv_path = "Video_Ids.csv"
 with open(csv_path, "r", newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -59,7 +59,7 @@ for i in range(0, len(video_ids), 50):  # batch 50 per request
             "subscribers": subs
         })
 
-csv_path = "Video_Metadata.csv"
+csv_path = "YT_Video.csv"
 with open(csv_path, "a", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=data[0].keys())
     if f.tell() == 0:
