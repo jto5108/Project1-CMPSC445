@@ -69,7 +69,6 @@ if not file_exists:
 # SCRAPE LOOP
 # ----------------------------
 for topic in queries:
-    print(f"\n🔍 Searching for: {topic}")
     driver.get(f"https://www.youtube.com/results?search_query={topic}&sp=EgIQAQ%253D%253D")
     
     # wait for videos to load
@@ -78,7 +77,6 @@ for topic in queries:
             EC.presence_of_element_located((By.XPATH, '//a[@id="video-title"]'))
         )
     except:
-        print("Timeout waiting for videos to load.")
         continue
 
     prev_count = -1
@@ -119,9 +117,6 @@ for topic in queries:
                 upload_date = "N/A"
 
             writer.writerow([title, url, channel, views, upload_date])
-            print(f"Saved: {title} | {url}")
-
-        print(f"Collected so far: {len(video_urls)}")
 
         if len(video_urls) >= max_videos:
             break
@@ -131,4 +126,3 @@ for topic in queries:
 # ----------------------------
 csv_f.close()
 driver.quit()
-print("\nDone. Check ThumbnailScrape.csv for results.")
