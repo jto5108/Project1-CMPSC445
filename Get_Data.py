@@ -1,124 +1,75 @@
 import csv
-import re
-import os
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
+import time
+import requests
+from bs4 import BeautifulSoup
 
 # ----------------------------
-# SETUP SELENIUM
-# ----------------------------
-options = Options()
-options.add_argument("--headless=new")
-options.add_argument("--disable-gpu")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-wait = WebDriverWait(driver, 5)  # wait max 5 seconds for elements
-
-# ----------------------------
-# INPUT / OUTPUT
+# FILE SETUP
 # ----------------------------
 input_file = "ThumbnailScrape.csv"
 output_file = "Youtube_Data.csv"
-start_row = 1
+start_row = 897  # continue from this row
 
-# ----------------------------
-# CATEGORY KEYWORDS
-# ----------------------------
-categories = {
-    "Xbox": ["xbox", "game pass", "series x", "series s", "microsoft"],
-    "PlayStation": ["playstation", "ps5", "ps4", "ps1", "ps2", "ps3", "play station", "sony", "spiderman"],
-    "Nintendo": ["nintendo", "switch", "zelda", "mario", "mario party", "luigi"],
-    "VR": ["vr", "oculus", "meta quest", "virtual reality"],
-    "Arcade": ["arcade", "retro", "pinball"],
-    "Mobile": ["mobile", "phone game", "ios", "android"],
-    "Minecraft": ["minecraft", "steve", "creeper"],
-    "CallOfDuty": ["call of duty", "cod", "modern warfare", "black ops", "bo4", "bo6", "bo7"],
-    "RainbowSix": ["rainbow six", "siege", "r6"],
-    "RocketLeague": ["rocket league", "rlcs", "musty"],
-    "Overwatch": ["overwatch", "ow2"],
+# User-Agent header to mimic a real browser
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/117.0.0.0 Safari/537.36"
+    )
 }
 
-# ----------------------------
-# FUNCTION TO ASSIGN CATEGORY
-# ----------------------------
-def assign_category(title, tag):
-    text = f"{title} {tag}".lower()
-    for category, keywords in categories.items():
-        for kw in keywords:
-            if re.search(r'\b' + re.escape(kw) + r'\b', text):
-                return category
-    return "General Gaming"
-
-# ----------------------------
-# CHECK IF CSV EXISTS
-# ----------------------------
-file_exists = os.path.exists(output_file)
-
-# ----------------------------
-# READ INPUT AND WRITE OUTPUT
-# ----------------------------
 with open(input_file, "r", encoding="utf-8") as infile, \
      open(output_file, "a", newline="", encoding="utf-8") as outfile:
 
     reader = csv.DictReader(infile)
-    fieldnames = reader.fieldnames + ["Comments", "FirstTag", "Category"]
+    fieldnames = reader.fieldnames + ["Comments", "FirstTag"]  # add new columns
     writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-
-    if not file_exists:
+    
+    # Write header only if file is empty
+    if outfile.tell() == 0:
         writer.writeheader()
 
     for i, row in enumerate(reader, start=1):
         if i < start_row:
             continue
 
-        url = row.get("URL", "")
-        if not url:
-            continue
+        url = row.get("URL")
+        print(f"[{i}] Scraping {url}")
 
-        # ----------------------------
-        # SCRAPE YOUTUBE
-        # ----------------------------
+        comments = "N/A"
+        first_tag = "N/A"
+
         try:
-            driver.get(url)
+            response = requests.get(url, headers=HEADERS)
+            if response.status_code != 200:
+                print(f"Failed to fetch page: {response.status_code}")
+            else:
+                soup = BeautifulSoup(response.text, "html.parser")
 
-            # comment count
-            try:
-                comment_count = wait.until(
-                    EC.presence_of_element_located((By.XPATH, '//h2[@id="count"]/yt-formatted-string'))
-                ).text
-            except TimeoutException:
-                comment_count = "N/A"
+                # ----------------------------
+                # COMMENTS COUNT
+                # ----------------------------
+                comment_elem = soup.select_one('h2#count yt-formatted-string')
+                if comment_elem:
+                    comments = comment_elem.get_text(strip=True)
 
-            # first tag
-            try:
-                first_tag = wait.until(
-                    EC.presence_of_element_located((By.XPATH, '//meta[@property="og:video:tag"]'))
-                ).get_attribute("content")
-            except TimeoutException:
-                first_tag = "N/A"
+                # ----------------------------
+                # FIRST TAG
+                # ----------------------------
+                tag_elem = soup.select_one('meta[property="og:video:tag"]')
+                if tag_elem:
+                    first_tag = tag_elem.get("content", "N/A")
 
-        except:
-            comment_count = "N/A"
-            first_tag = "N/A"
+        except Exception as e:
+            print(f"Error scraping {url}: {e}")
 
-        # ----------------------------
-        # ASSIGN CATEGORY
-        # ----------------------------
-        category = assign_category(row.get("Title", ""), first_tag if first_tag != "N/A" else "")
-
-        # ----------------------------
-        # WRITE ROW TO CSV
-        # ----------------------------
-        row["Comments"] = comment_count
+        # Save enriched row
+        row["Comments"] = comments
         row["FirstTag"] = first_tag
-        row["Category"] = category
         writer.writerow(row)
+        print(f"Done {i}")
 
-driver.quit()
+        time.sleep(1)  # be polite, avoid rate-limiting
+
+print("Scraping complete. Data saved to", output_file)
